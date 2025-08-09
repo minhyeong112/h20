@@ -1,12 +1,23 @@
 const undici = require('undici');
 const fetch = require('node-fetch');
 const passport = require('passport');
-const client = require('openid-client');
 const jwtDecode = require('jsonwebtoken/decode');
+
+let client = null;
+let OpenIDStrategy = null;
+
+// Dynamic import for ES modules
+async function importOpenIdClient() {
+  if (!client) {
+    const openidClient = await import('openid-client');
+    client = openidClient;
+    OpenIDStrategy = openidClient.Strategy;
+  }
+  return { client, OpenIDStrategy };
+}
 const { CacheKeys } = require('librechat-data-provider');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 const { hashToken, logger } = require('@librechat/data-schemas');
-const { Strategy: OpenIDStrategy } = require('openid-client/passport');
 const { isEnabled, safeStringify, logHeaders } = require('@librechat/api');
 const { getStrategyFunctions } = require('~/server/services/Files/strategies');
 const { findUser, createUser, updateUser } = require('~/models');
@@ -94,27 +105,7 @@ let openidConfig = null;
 //overload currenturl function because of express version 4 buggy req.host doesn't include port
 //More info https://github.com/panva/openid-client/pull/713
 
-class CustomOpenIDStrategy extends OpenIDStrategy {
-  currentUrl(req) {
-    const hostAndProtocol = process.env.DOMAIN_SERVER;
-    return new URL(`${hostAndProtocol}${req.originalUrl ?? req.url}`);
-  }
-  authorizationRequestParams(req, options) {
-    const params = super.authorizationRequestParams(req, options);
-    if (options?.state && !params.has('state')) {
-      params.set('state', options.state);
-    }
-
-    if (process.env.OPENID_AUDIENCE) {
-      params.set('audience', process.env.OPENID_AUDIENCE);
-      logger.debug(
-        `[openidStrategy] Adding audience to authorization request: ${process.env.OPENID_AUDIENCE}`,
-      );
-    }
-
-    return params;
-  }
-}
+let CustomOpenIDStrategy = null;
 
 /**
  * Exchange the access token for a new access token using the on-behalf-of flow if required.
@@ -125,6 +116,7 @@ class CustomOpenIDStrategy extends OpenIDStrategy {
  * @returns {Promise<string>} The new access token if exchanged, otherwise the original access token.
  */
 const exchangeAccessTokenIfNeeded = async (config, accessToken, sub, fromCache = false) => {
+  await importOpenIdClient();
   const tokensCache = getLogStores(CacheKeys.OPENID_EXCHANGED_TOKENS);
   const onBehalfFlowRequired = isEnabled(process.env.OPENID_ON_BEHALF_FLOW_FOR_USERINFO_REQUIRED);
   if (onBehalfFlowRequired) {
@@ -164,6 +156,7 @@ const exchangeAccessTokenIfNeeded = async (config, accessToken, sub, fromCache =
  */
 const getUserInfo = async (config, accessToken, sub) => {
   try {
+    await importOpenIdClient();
     const exchangedAccessToken = await exchangeAccessTokenIfNeeded(config, accessToken, sub);
     return await client.fetchUserInfo(config, exchangedAccessToken, sub);
   } catch (error) {
@@ -276,6 +269,34 @@ function convertToUsername(input, defaultValue = '') {
  */
 async function setupOpenId() {
   try {
+    // Initialize the dynamic imports
+    await importOpenIdClient();
+    
+    // Create the CustomOpenIDStrategy class
+    class CustomOpenIDStrategyImpl extends OpenIDStrategy {
+      currentUrl(req) {
+        const hostAndProtocol = process.env.DOMAIN_SERVER;
+        return new URL(`${hostAndProtocol}${req.originalUrl ?? req.url}`);
+      }
+      authorizationRequestParams(req, options) {
+        const params = super.authorizationRequestParams(req, options);
+        if (options?.state && !params.has('state')) {
+          params.set('state', options.state);
+        }
+
+        if (process.env.OPENID_AUDIENCE) {
+          params.set('audience', process.env.OPENID_AUDIENCE);
+          logger.debug(
+            `[openidStrategy] Adding audience to authorization request: ${process.env.OPENID_AUDIENCE}`,
+          );
+        }
+
+        return params;
+      }
+    }
+    
+    CustomOpenIDStrategy = CustomOpenIDStrategyImpl;
+
     /** @type {ClientMetadata} */
     const clientMetadata = {
       client_id: process.env.OPENID_CLIENT_ID,
