@@ -6,19 +6,21 @@ import { compression } from 'vite-plugin-compression2';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const apiTarget = process.env.DOMAIN_SERVER || 'http://localhost:3080';
+
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => ({
   server: {
-    host: 'localhost',
+    host: true,
     port: 3090,
     strictPort: false,
     proxy: {
       '/api': {
-        target: 'http://localhost:3080',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/oauth': {
-        target: 'http://localhost:3080',
+        target: apiTarget,
         changeOrigin: true,
       },
     },
