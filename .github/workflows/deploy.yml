@@ -40,14 +40,14 @@ jobs:
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.PORT }}
+        command_timeout: 30m
+        timeout: 35m
         script: |
           cd h20
           git fetch origin
           git reset --hard origin/main
           docker compose -f deploy-compose.yml down
-          # Remove old images to force complete rebuild
-          docker images | grep "h20-api" | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
-          # Build with no cache to ensure fresh build
-          docker compose -f deploy-compose.yml build --no-cache
+          # Build normally (with cache) for faster builds
+          docker compose -f deploy-compose.yml build
           docker compose -f deploy-compose.yml up -d
           docker compose -f deploy-compose.yml ps
