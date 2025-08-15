@@ -1,6 +1,6 @@
 # 🚀 LibreChat Instant Local Testing Setup
 
-## ✅ Configuration Complete
+##  ✅ Configuration Complete
 
 Your LibreChat environment is now configured for **instant local testing**!
 
