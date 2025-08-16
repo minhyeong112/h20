@@ -1,0 +1,18 @@
+# This workflow has been disabled since this is a custom fork
+# and doesn't need to sync with the original LibreChat translation system
+# 
+# Original workflow renamed to .disabled to prevent it from running
+# but kept for reference if needed later
+
+name: Sync Locize Translations & Create Translation PR (DISABLED)
+
+on:
+  # Disabled - no triggers
+  
+jobs:
+  sync-translations:
+    name: Sync Translation Keys with Locize (DISABLED)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disabled
+        run: echo "This workflow has been disabled for this fork"
