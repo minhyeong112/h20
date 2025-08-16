@@ -37,7 +37,7 @@ export default function Footer({ className }: { className?: string }) {
   const mainContentParts = (
     typeof config?.customFooter === 'string'
       ? config.customFooter
-      : '[H20](https://h20.co) - ' +
+      : '[H20000](https://h20.co) - ' +
         localize('com_ui_latest_footer')
   ).split('|');
 
