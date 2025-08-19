@@ -1,4 +1,4 @@
-# 🚀 LibreChat Instant Local Testing Setup
+# 🚀 LibreChat Instant Local Testing  Setup
 
 ##  ✅ Configuration Complete
 
