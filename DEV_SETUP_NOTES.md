@@ -1,6 +1,6 @@
 # 🔧 Development Setup - Issue Resolution Log
 
-## Issue Encountered
+## Issue  Encountered
 The development server failed to start with an ES Module compatibility error:
 ```
 Error [ERR_REQUIRE_ESM]: require() of ES Module /workspaces/api/node_modules/openid-client/build/index.js from /workspaces/api/strategies/openidStrategy.js not supported.
