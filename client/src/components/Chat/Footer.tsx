@@ -37,8 +37,7 @@ export default function Footer({ className }: { className?: string }) {
   const mainContentParts = (
     typeof config?.customFooter === 'string'
       ? config.customFooter
-      : '[H20](https://h20.co) - ' +
-        localize('com_ui_latest_footer')
+      : localize('com_ui_latest_footer')
   ).split('|');
 
   useEffect(() => {
