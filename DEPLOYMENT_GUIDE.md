@@ -1,4 +1,4 @@
-# 🚀 LibreChat H20 Fork - Remote Hosting Guide
+# 🚀  LibreChat H20 Fork - Remote Hosting Guide
 
 This guide will help you deploy your customized LibreChat fork remotely for production use, following the MIT license for eventual commercialization.
 
