@@ -14,15 +14,6 @@ interface:
   # Disable presets
   endpointsMenu: false
   
-  # Privacy policy settings
-  privacyPolicy:
-    externalUrl: 'https://tryvajra.com/privacy'
-    openNewTab: true
-  
-  # Terms of service
-  termsOfService:
-    externalUrl: 'https://tryvajra.com/terms'
-    openNewTab: true
 
 # Definition of custom endpoints
 endpoints:
