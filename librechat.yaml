@@ -111,6 +111,6 @@ speech:
   # Text-to-Speech Configuration (ElevenLabs)
   tts:
     elevenlabs:
-      apiKey: '${ELEVENLABS_API_KEY}'
+      apiKey: '${TTS_API_KEY}'
       model: 'eleven_multilingual_v2'
       voices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
