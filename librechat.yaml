@@ -4,7 +4,7 @@
 # Configuration version (required)
 version: 1.2.8
 # This setting caches the config file for faster loading across app lifecycle
-cache: true
+cache: false
 
 # Custom interface configuration
 interface:
@@ -13,6 +13,14 @@ interface:
   
   # Disable presets
   endpointsMenu: false
+  
+  # Privacy Policy and Terms of Service
+  privacyPolicy:
+    externalUrl: "https://tryvajra.com/privacy"
+    openNewTab: true
+  termsOfService:
+    externalUrl: "https://tryvajra.com/terms"
+    openNewTab: true
   
 
 # Definition of custom endpoints
