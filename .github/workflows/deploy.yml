@@ -49,8 +49,8 @@ jobs:
           # =============================================================================
           
           # App Configuration
-          APP_TITLE=LibreChat
-          CUSTOM_FOOTER=
+          APP_TITLE=Vajra
+          CUSTOM_FOOTER="Vajra"
           HELP_AND_FAQ_URL=
           
           # Host and Database
