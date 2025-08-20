@@ -38,7 +38,7 @@ export default function StartupLayout({ isAuthenticated }: { isAuthenticated?: b
   }, [isAuthenticated, navigate, data]);
 
   useEffect(() => {
-    document.title = startupConfig?.appTitle || 'H20';
+    document.title = startupConfig?.appTitle || 'Vajra';
   }, [startupConfig?.appTitle]);
 
   useEffect(() => {
