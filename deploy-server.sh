@@ -59,6 +59,15 @@ sudo sed -i "s|DOMAIN_CLIENT=http://localhost:3080|DOMAIN_CLIENT=http://167.71.2
 sudo sed -i "s|DOMAIN_SERVER=http://localhost:3080|DOMAIN_SERVER=http://167.71.217.38|g" .env
 sudo sed -i "s|HOST=localhost|HOST=0.0.0.0|g" .env
 
+# Set branding variables
+echo "🎨 Setting up Vajra branding..."
+if ! grep -q "APP_TITLE=Vajra" .env; then
+    echo "APP_TITLE=Vajra" >> .env
+fi
+if ! grep -q 'CUSTOM_FOOTER="Vajra"' .env; then
+    echo 'CUSTOM_FOOTER="Vajra"' >> .env
+fi
+
 # Start the application
 echo "🚀 Starting LibreChat with Docker Compose..."
 sudo docker-compose -f deploy-compose.yml down
