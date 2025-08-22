@@ -95,7 +95,7 @@ speech:
       autoSendText: -1
     textToSpeech:
       engineTTS: "external"
-      voice: "202898wioas09d2"
+      voice: "alloy"
       languageTTS: "en"
       automaticPlayback: true
       playbackRate: 1.0
@@ -108,8 +108,13 @@ speech:
       model: 'whisper-1'
 
   # Text-to-Speech Configuration (ElevenLabs)
+  #tts:
+  #  elevenlabs:
+  #    apiKey: '${TTS_API_KEY}'
+  #    model: 'eleven_multilingual_v2'
+  #    voices: ['202898wioas09d2', 'addwqr324tesfsf', '3asdasr3qrq44w', 'adsadsa']
   tts:
-    elevenlabs:
-      apiKey: '${TTS_API_KEY}'
-      model: 'eleven_multilingual_v2'
-      voices: ['202898wioas09d2', 'addwqr324tesfsf', '3asdasr3qrq44w', 'adsadsa']
+    openai:
+      apiKey: '${OPENAI_API_KEY}'
+      model: 'tts-1'
+      voices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
