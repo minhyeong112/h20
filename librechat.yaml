@@ -92,10 +92,10 @@ speech:
       languageSTT: "English (US)"
       autoTranscribeAudio: true
       decibelValue: -45
-      autoSendText: 0
+      autoSendText: -1
     textToSpeech:
       engineTTS: "external"
-      voice: "alloy"
+      voice: "202898wioas09d2"
       languageTTS: "en"
       automaticPlayback: true
       playbackRate: 1.0
@@ -112,4 +112,4 @@ speech:
     elevenlabs:
       apiKey: '${TTS_API_KEY}'
       model: 'eleven_multilingual_v2'
-      voices: ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
+      voices: ['202898wioas09d2', 'addwqr324tesfsf', '3asdasr3qrq44w', 'adsadsa']
