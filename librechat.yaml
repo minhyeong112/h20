@@ -46,7 +46,7 @@ endpoints:
       baseURL: 'https://api.x.ai/v1'
       models:
         default: ['grok-4', 'grok-3']
-        fetch: true
+        fetch: false
       titleConvo: true
       titleModel: 'grok-3'
       modelDisplayLabel: 'XAI'
@@ -57,7 +57,7 @@ endpoints:
       baseURL: 'https://api.perplexity.ai'
       models:
         default: ['sonar-deep-research', 'sonar-reasoning-pro', 'sonar-reasoning', 'sonar-pro', 'sonar']
-        fetch: true
+        fetch: false
       titleConvo: true
       titleModel: 'sonar'
       modelDisplayLabel: 'Perplexity'
