@@ -46,8 +46,25 @@ jobs:
           export LIBRECHAT_CODE_API_KEY="${{ secrets.LIBRECHAT_CODE_API_KEY }}"
           # Generate .env file using the template system
           node config/generate-env.js
-          echo "🔄 Restarting services..."
+          echo "🔍 Verifying generated configuration..."
+          echo "Generated .env file contains:"
+          grep -E "OPENAI_MODELS|ANTHROPIC_MODELS|GOOGLE_MODELS|ENDPOINTS" .env || echo "Model configs not found in .env"
+          echo "LibreChat YAML file exists:"
+          ls -la librechat.yaml || echo "librechat.yaml not found"
+          echo "🔄 Stopping services..."
           docker compose down
-          docker compose up -d --build
-          echo "✅ Deployment complete!"
+          echo "🧹 Cleaning Docker cache to force fresh build..."
+          docker system prune -af --volumes
+          docker builder prune -af
+          echo "🔨 Building and starting services with fresh containers..."
+          docker compose build --no-cache
+          docker compose up -d --force-recreate
+          echo "⏳ Waiting for services to start..."
+          sleep 30
+          echo "🔍 Checking running containers..."
           docker compose ps
+          echo "🔍 Verifying environment variables in container..."
+          docker compose exec -T api printenv | grep -E "OPENAI_MODELS|ANTHROPIC_MODELS|GOOGLE_MODELS|ENDPOINTS" || echo "Environment variables not found in container"
+          echo "🔍 Checking recent logs..."
+          docker compose logs --tail=50 api
+          echo "✅ Deployment complete!"
