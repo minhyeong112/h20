@@ -61,7 +61,7 @@ jobs:
 # =============================================================================
 
 APP_TITLE=Vajra
-CUSTOM_FOOTER="Vajra"
+CUSTOM_FOOTER=Vajra
 HELP_AND_FAQ_URL=
 HOST=localhost
 PORT=3080
