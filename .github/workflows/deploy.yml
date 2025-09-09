@@ -22,116 +22,30 @@ jobs:
           echo "🔄 Pulling latest changes..."
           git fetch origin
           git reset --hard origin/main
-          echo "🔧 Creating environment file from secrets..."
-          cat > .env << EOF
-          # =============================================================================
-          # REQUIRED API KEYS
-          # =============================================================================
-          
-          # AI Provider API Keys
-          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
-          GOOGLE_KEY=${{ secrets.GOOGLE_KEY }}
-          XAI_API_KEY=${{ secrets.XAI_API_KEY }}
-          PERPLEXITY_API_KEY=${{ secrets.PERPLEXITY_API_KEY }}
-          
-          # Web Search Service API Keys
-          SERPER_API_KEY=${{ secrets.SERPER_API_KEY }}
-          FIRECRAWL_API_KEY=${{ secrets.FIRECRAWL_API_KEY }}
-          JINA_API_KEY=${{ secrets.JINA_API_KEY }}
-          
-          # Speech Services API Keys
-          TTS_API_KEY=${{ secrets.TTS_API_KEY }}
-          STT_API_KEY=${{ secrets.STT_API_KEY }}
-          
-          # =============================================================================
-          # LIBRECHAT CONFIGURATION
-          # =============================================================================
-          
-          # App Configuration
-          APP_TITLE=Vajra
-          CUSTOM_FOOTER="Vajra"
-          HELP_AND_FAQ_URL=
-          
-          # Host and Database
-          HOST=localhost
-          PORT=3080
-          MONGO_URI=mongodb://mongodb:27017/LibreChat
-          DOMAIN_CLIENT=${{ secrets.DOMAIN_CLIENT }}
-          DOMAIN_SERVER=${{ secrets.DOMAIN_SERVER }}
-          
-          # Endpoints Configuration
-          ENDPOINTS=openAI,anthropic,google,agents
-          
-          # Model Lists
-          OPENAI_MODELS=gpt-5,o3,o1,o4-mini,gpt-4o,gpt-4o-mini,gpt-4-turbo,gpt-4,gpt-3.5-turbo
-          ANTHROPIC_MODELS=claude-opus-4-1-20250805,claude-sonnet-4-20250514,claude-3.5-sonnet,claude-3.5-haiku,claude-3-opus,claude-3-sonnet,claude-3-haiku
-          GOOGLE_MODELS=gemini-2.5-pro,gemini-2.5-flash,gemini-1.5-pro,gemini-1.5-flash,gemini-pro,gemini-pro-vision
-          
-          # Security
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
-          CREDS_KEY=${{ secrets.CREDS_KEY }}
-          CREDS_IV=${{ secrets.CREDS_IV }}
-          
-          # Session and Rate Limiting
-          SESSION_EXPIRY=1000 * 60 * 15
-          REFRESH_TOKEN_EXPIRY=1000 * 60 * 60 * 24 * 7
-          LOGIN_VIOLATION_SCORE=1
-          REGISTRATION_VIOLATION_SCORE=1
-          CONCURRENT_VIOLATION_SCORE=1
-          MESSAGE_VIOLATION_SCORE=1
-          NON_BROWSER_VIOLATION_SCORE=20
-          LOGIN_MAX=7
-          LOGIN_WINDOW=5
-          REGISTER_MAX=5
-          REGISTER_WINDOW=60
-          LIMIT_CONCURRENT_MESSAGES=true
-          CONCURRENT_MESSAGE_MAX=2
-          LIMIT_MESSAGE_IP=true
-          MESSAGE_IP_MAX=40
-          MESSAGE_IP_WINDOW=1
-          LIMIT_MESSAGE_USER=false
-          MESSAGE_USER_MAX=40
-          MESSAGE_USER_WINDOW=1
-          ILLEGAL_MODEL_REQ_SCORE=5
-          
-          # Features
-          REGISTRATION_ALLOWED=true
-          ALLOW_EMAIL_LOGIN=true
-          ALLOW_REGISTRATION=true
-          ALLOW_SOCIAL_LOGIN=false
-          ALLOW_SOCIAL_REGISTRATION=false
-          EMAIL_VERIFICATION_REQUIRED=false
-          
-          # Search Configuration
-          SEARCH=false
-          MEILI_MASTER_KEY=${{ secrets.MEILI_MASTER_KEY }}
-          MEILI_HTTP_ADDR=127.0.0.1:7700
-          MEILI_NO_ANALYTICS=true
-          
-          # Logging
-          DEBUG_LOGGING=true
-          DEBUG_CONSOLE=false
-          
-          # File Handling
-          CDN_PROVIDER=
-          FIREBASE_WEB_CONFIG=
-          FIREBASE_SERVICE_ACCOUNT_KEY=
-          
-          # Email Configuration
-          EMAIL_SERVICE=
-          EMAIL_USERNAME=
-          EMAIL_PASSWORD=
-          EMAIL_FROM=
-          
-          # Vector Database
-          RAG_API_URL=http://rag_api:8000
-          RAG_PORT=8000
-          
-          # Development
-          VITE_SHOW_FORK=true
-          EOF
+          echo "🔧 Generating environment file from template..."
+          # Export all secrets as environment variables for the generator script
+          export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          export ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}"
+          export GOOGLE_KEY="${{ secrets.GOOGLE_KEY }}"
+          export XAI_API_KEY="${{ secrets.XAI_API_KEY }}"
+          export PERPLEXITY_API_KEY="${{ secrets.PERPLEXITY_API_KEY }}"
+          export SERPER_API_KEY="${{ secrets.SERPER_API_KEY }}"
+          export FIRECRAWL_API_KEY="${{ secrets.FIRECRAWL_API_KEY }}"
+          export JINA_API_KEY="${{ secrets.JINA_API_KEY }}"
+          export STT_API_KEY="${{ secrets.STT_API_KEY }}"
+          export TTS_API_KEY="${{ secrets.TTS_API_KEY }}"
+          export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+          export JWT_REFRESH_SECRET="${{ secrets.JWT_REFRESH_SECRET }}"
+          export CREDS_KEY="${{ secrets.CREDS_KEY }}"
+          export CREDS_IV="${{ secrets.CREDS_IV }}"
+          export MEILI_MASTER_KEY="${{ secrets.MEILI_MASTER_KEY }}"
+          export DOMAIN_CLIENT="${{ secrets.DOMAIN_CLIENT }}"
+          export DOMAIN_SERVER="${{ secrets.DOMAIN_SERVER }}"
+          export ASSISTANTS_API_KEY="${{ secrets.ASSISTANTS_API_KEY }}"
+          export OPENWEATHER_API_KEY="${{ secrets.OPENWEATHER_API_KEY }}"
+          export LIBRECHAT_CODE_API_KEY="${{ secrets.LIBRECHAT_CODE_API_KEY }}"
+          # Generate .env file using the template system
+          node config/generate-env.js
           echo "🔄 Restarting services..."
           docker compose down
           docker compose up -d --build
