@@ -22,6 +22,8 @@ interface:
     externalUrl: "https://tryvajra.com/terms"
     openNewTab: true
   
+  # Remove parameters in right menu
+  parameters: false
 
 # Definition of custom endpoints
 endpoints:
