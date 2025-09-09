@@ -70,9 +70,8 @@ fi
 
 # Start the application
 echo "🚀 Starting LibreChat with Docker Compose..."
-sudo docker-compose -f deploy-compose.yml down
-sudo docker-compose -f deploy-compose.yml pull
-sudo docker-compose -f deploy-compose.yml up -d
+sudo docker compose down
+sudo docker compose up -d --build
 
 echo "✅ Deployment complete!"
 echo ""
@@ -81,8 +80,8 @@ echo "   http://167.71.217.38"
 echo ""
 echo "⚠️  Important next steps:"
 echo "   1. Add your AI API keys to the .env file"
-echo "   2. Restart the containers: sudo docker-compose -f deploy-compose.yml restart"
+echo "   2. Restart the containers: sudo docker compose restart"
 echo "   3. Set up a domain name and SSL certificate"
 echo ""
-echo "📊 Check status with: sudo docker-compose -f deploy-compose.yml ps"
-echo "📝 View logs with: sudo docker-compose -f deploy-compose.yml logs -f"
+echo "📊 Check status with: sudo docker compose ps"
+echo "📝 View logs with: sudo docker compose logs -f"
