@@ -25,6 +25,15 @@ interface:
   # Remove parameters in right menu
   parameters: false
 
+registration:
+  socialLogins: ["google", "facebook", "github", "discord", "openid"]
+
+# Actions configuration for allowed domains
+actions:
+  allowedDomains:
+    - "tryvajra.com"
+    - "ai-commandcenter.com"
+
 # Definition of custom endpoints
 endpoints:
   # Enable agents and assistants
