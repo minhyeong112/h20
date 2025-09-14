@@ -1,6 +1,7 @@
 const { EModelEndpoint, getEnabledEndpoints } = require('librechat-data-provider');
 const loadAsyncEndpoints = require('./loadAsyncEndpoints');
 const { config } = require('./EndpointService');
+const { getCustomConfig } = require('./getCustomConfig');
 
 /**
  * Load async endpoints and return a configuration object
@@ -10,6 +11,10 @@ const { config } = require('./EndpointService');
 async function loadDefaultEndpointsConfig(req) {
   const { google, gptPlugins } = await loadAsyncEndpoints(req);
   const { assistants, azureAssistants, azureOpenAI, chatGPTBrowser } = config;
+
+  // Get custom configuration to read modelDisplayNames
+  const customConfig = await getCustomConfig();
+  const customEndpoints = customConfig?.endpoints || {};
 
   const enabledEndpoints = getEnabledEndpoints();
 
@@ -28,7 +33,14 @@ async function loadDefaultEndpointsConfig(req) {
 
   const orderedAndFilteredEndpoints = enabledEndpoints.reduce((config, key, index) => {
     if (endpointConfig[key]) {
-      config[key] = { ...(endpointConfig[key] ?? {}), order: index };
+      const baseConfig = { ...(endpointConfig[key] ?? {}), order: index };
+      
+      // Add modelDisplayNames from custom configuration if available
+      if (customEndpoints[key]?.modelDisplayNames) {
+        baseConfig.modelDisplayNames = customEndpoints[key].modelDisplayNames;
+      }
+      
+      config[key] = baseConfig;
     }
     return config;
   }, {});

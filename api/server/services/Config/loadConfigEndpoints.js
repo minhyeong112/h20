@@ -35,6 +35,7 @@ async function loadConfigEndpoints(req) {
         name: configName,
         iconURL,
         modelDisplayLabel,
+        modelDisplayNames,
         customParams,
       } = endpoint;
       const name = normalizeEndpointName(configName);
@@ -47,6 +48,7 @@ async function loadConfigEndpoints(req) {
         userProvide: isUserProvided(resolvedApiKey),
         userProvideURL: isUserProvided(resolvedBaseURL),
         modelDisplayLabel,
+        modelDisplayNames,
         iconURL,
         customParams,
       };

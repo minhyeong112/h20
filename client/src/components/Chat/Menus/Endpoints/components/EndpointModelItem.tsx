@@ -30,6 +30,11 @@ export function EndpointModelItem({ modelId, endpoint, isSelected }: EndpointMod
     endpoint.assistantNames?.[modelId]
   ) {
     modelName = endpoint.assistantNames[modelId];
+  } else if (endpoint && modelId && endpoint.modelDisplayNames?.[modelId]) {
+    // Use general model display names for any endpoint
+    modelName = endpoint.modelDisplayNames[modelId];
+    const modelInfo = endpoint?.models?.find((m) => m.name === modelId);
+    isGlobal = modelInfo?.isGlobal ?? false;
   }
 
   return (

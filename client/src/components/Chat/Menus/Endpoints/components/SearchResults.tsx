@@ -115,6 +115,8 @@ export function SearchResults({ results, localize, searchValue }: SearchResultsP
                     endpoint.assistantNames[model.name]
                   ) {
                     modelName = endpoint.assistantNames[model.name];
+                  } else if (endpoint.modelDisplayNames && endpoint.modelDisplayNames[model.name]) {
+                    modelName = endpoint.modelDisplayNames[model.name];
                   }
                   return modelName.toLowerCase().includes(lowerQuery);
                 });
@@ -152,6 +154,10 @@ export function SearchResults({ results, localize, searchValue }: SearchResultsP
                     endpoint.assistantNames[modelId]
                   ) {
                     modelName = endpoint.assistantNames[modelId];
+                  } else if (endpoint.modelDisplayNames && endpoint.modelDisplayNames[modelId]) {
+                    modelName = endpoint.modelDisplayNames[modelId];
+                    const modelInfo = endpoint?.models?.find((m) => m.name === modelId);
+                    isGlobal = modelInfo?.isGlobal ?? false;
                   }
 
                   return (
