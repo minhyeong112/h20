@@ -329,6 +329,7 @@ export type TConfig = {
   iconURL?: string;
   version?: string;
   modelDisplayLabel?: string;
+  modelDisplayNames?: Record<string, string>;
   userProvide?: boolean | null;
   userProvideURL?: boolean | null;
   disableBuilder?: boolean;

@@ -106,11 +106,15 @@ export const useEndpoints = ({
           ep !== EModelEndpoint.agents &&
           (modelsQuery.data?.[ep]?.length ?? 0) > 0);
 
+      // Get modelDisplayNames from endpointsConfig for this endpoint
+      const modelDisplayNames = getEndpointField(endpointsConfig, ep, 'modelDisplayNames') as Record<string, string> | undefined;
+
       // Base result object with formatted default icon
       const result: Endpoint = {
         value: ep,
         label: alternateName[ep] || ep,
         hasModels,
+        modelDisplayNames: modelDisplayNames,
         icon: Icon
           ? React.createElement(Icon, {
               size: 20,
