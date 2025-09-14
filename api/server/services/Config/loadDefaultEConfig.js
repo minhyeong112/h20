@@ -36,6 +36,7 @@ async function loadDefaultEndpointsConfig(req) {
       const baseConfig = { ...(endpointConfig[key] ?? {}), order: index };
       
       // Add modelDisplayNames from custom configuration if available
+      // This works for both YAML-defined endpoints and environment variable-defined models
       if (customEndpoints[key]?.modelDisplayNames) {
         baseConfig.modelDisplayNames = customEndpoints[key].modelDisplayNames;
       }
