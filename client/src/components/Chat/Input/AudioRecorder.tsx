@@ -46,11 +46,13 @@ export default function AudioRecorder({
 
   const setText = useCallback(
     (text: string) => {
-      setValue('text', text, {
+      const currentText = methods.getValues('text') || '';
+      const newText = currentText ? `${currentText} ${text}` : text;
+      setValue('text', newText, {
         shouldValidate: true,
       });
     },
-    [setValue],
+    [setValue, methods],
   );
 
   const { isListening, isLoading, startRecording, stopRecording } = useSpeechToText(
