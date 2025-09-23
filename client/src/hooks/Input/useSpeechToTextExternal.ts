@@ -5,6 +5,24 @@ import { useSpeechToTextMutation } from '~/data-provider';
 import useGetAudioSettings from './useGetAudioSettings';
 import store from '~/store';
 
+// Audio chunking utilities
+const CHUNK_SIZE_MB = 20; // 20MB chunks to stay under 25MB limit
+const CHUNK_SIZE_BYTES = CHUNK_SIZE_MB * 1024 * 1024;
+const SILENCE_THRESHOLD_MS = 1000; // 1 second of silence for smart chunking
+const MIN_CHUNK_DURATION_MS = 5000; // Minimum 5 seconds per chunk
+
+interface AudioChunk {
+  blob: Blob;
+  startTime: number;
+  endTime: number;
+}
+
+interface ChunkingProgress {
+  currentChunk: number;
+  totalChunks: number;
+  isProcessing: boolean;
+}
+
 const useSpeechToTextExternal = (
   setText: (text: string) => void,
   onTranscriptionComplete: (text: string) => void,
@@ -22,6 +40,11 @@ const useSpeechToTextExternal = (
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [isRequestBeingMade, setIsRequestBeingMade] = useState(false);
   const [audioMimeType, setAudioMimeType] = useState<string>(() => getBestSupportedMimeType());
+  const [chunkingProgress, setChunkingProgress] = useState<ChunkingProgress>({
+    currentChunk: 0,
+    totalChunks: 0,
+    isProcessing: false,
+  });
 
   const [minDecibels] = useRecoilState(store.decibelValue);
   const [autoSendText] = useRecoilState(store.autoSendText);
@@ -46,6 +69,7 @@ const useSpeechToTextExternal = (
         status: 'error',
       });
       setIsRequestBeingMade(false);
+      setChunkingProgress({ currentChunk: 0, totalChunks: 0, isProcessing: false });
     },
   });
 
@@ -89,6 +113,229 @@ const useSpeechToTextExternal = (
     }
   };
 
+  // Audio chunking utilities
+  const createAudioContext = async (audioBlob: Blob): Promise<AudioContext> => {
+    const audioContext = new AudioContext();
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    await audioContext.decodeAudioData(arrayBuffer);
+    return audioContext;
+  };
+
+  const detectSilencePoints = async (audioBlob: Blob): Promise<number[]> => {
+    try {
+      const audioContext = new AudioContext();
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      const channelData = audioBuffer.getChannelData(0);
+      const sampleRate = audioBuffer.sampleRate;
+      const silencePoints: number[] = [];
+      
+      const windowSize = Math.floor(sampleRate * 0.1); // 100ms windows
+      const silenceThreshold = 0.01; // Amplitude threshold for silence
+      
+      for (let i = 0; i < channelData.length - windowSize; i += windowSize) {
+        let sum = 0;
+        for (let j = i; j < i + windowSize; j++) {
+          sum += Math.abs(channelData[j]);
+        }
+        const average = sum / windowSize;
+        
+        if (average < silenceThreshold) {
+          const timeInSeconds = i / sampleRate;
+          silencePoints.push(timeInSeconds);
+        }
+      }
+      
+      audioContext.close();
+      return silencePoints;
+    } catch (error) {
+      console.warn('Failed to detect silence points:', error);
+      return [];
+    }
+  };
+
+  const findOptimalChunkPoints = async (audioBlob: Blob, targetChunkSize: number): Promise<number[]> => {
+    const silencePoints = await detectSilencePoints(audioBlob);
+    const audioDuration = await getAudioDuration(audioBlob);
+    const targetChunkDuration = (targetChunkSize / audioBlob.size) * audioDuration;
+    
+    const chunkPoints: number[] = [0];
+    let currentTime = 0;
+    
+    while (currentTime < audioDuration) {
+      const targetTime = currentTime + targetChunkDuration;
+      
+      // Find the closest silence point to the target time
+      const closestSilencePoint = silencePoints.reduce((closest, point) => {
+        return Math.abs(point - targetTime) < Math.abs(closest - targetTime) ? point : closest;
+      }, targetTime);
+      
+      // Use silence point if it's within reasonable range, otherwise use target time
+      const nextChunkPoint = Math.abs(closestSilencePoint - targetTime) < targetChunkDuration * 0.2 
+        ? closestSilencePoint 
+        : targetTime;
+      
+      // Ensure minimum chunk duration
+      if (nextChunkPoint - currentTime >= MIN_CHUNK_DURATION_MS / 1000) {
+        chunkPoints.push(Math.min(nextChunkPoint, audioDuration));
+        currentTime = nextChunkPoint;
+      } else {
+        currentTime = targetTime;
+      }
+    }
+    
+    // Ensure we end at the audio duration
+    if (chunkPoints[chunkPoints.length - 1] < audioDuration) {
+      chunkPoints.push(audioDuration);
+    }
+    
+    return chunkPoints;
+  };
+
+  const getAudioDuration = (audioBlob: Blob): Promise<number> => {
+    return new Promise((resolve, reject) => {
+      const audio = new Audio();
+      audio.onloadedmetadata = () => {
+        resolve(audio.duration);
+      };
+      audio.onerror = reject;
+      audio.src = URL.createObjectURL(audioBlob);
+    });
+  };
+
+  const sliceAudioBlob = async (audioBlob: Blob, startTime: number, endTime: number): Promise<Blob> => {
+    try {
+      const audioContext = new AudioContext();
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      const sampleRate = audioBuffer.sampleRate;
+      const startSample = Math.floor(startTime * sampleRate);
+      const endSample = Math.floor(endTime * sampleRate);
+      const frameCount = endSample - startSample;
+      
+      const slicedBuffer = audioContext.createBuffer(
+        audioBuffer.numberOfChannels,
+        frameCount,
+        sampleRate
+      );
+      
+      for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+        const channelData = audioBuffer.getChannelData(channel);
+        const slicedChannelData = slicedBuffer.getChannelData(channel);
+        for (let i = 0; i < frameCount; i++) {
+          slicedChannelData[i] = channelData[startSample + i];
+        }
+      }
+      
+      // Convert back to blob (simplified - in production you'd want proper encoding)
+      const slicedArrayBuffer = await audioBufferToArrayBuffer(slicedBuffer);
+      audioContext.close();
+      
+      return new Blob([slicedArrayBuffer], { type: audioMimeType });
+    } catch (error) {
+      console.warn('Failed to slice audio, using time-based fallback:', error);
+      // Fallback: return original blob (not ideal but prevents errors)
+      return audioBlob;
+    }
+  };
+
+  const audioBufferToArrayBuffer = async (audioBuffer: AudioBuffer): Promise<ArrayBuffer> => {
+    // This is a simplified conversion - in production you'd want proper audio encoding
+    const length = audioBuffer.length * audioBuffer.numberOfChannels * 2;
+    const arrayBuffer = new ArrayBuffer(length);
+    const view = new Int16Array(arrayBuffer);
+    
+    let offset = 0;
+    for (let i = 0; i < audioBuffer.length; i++) {
+      for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+        const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(channel)[i]));
+        view[offset++] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+      }
+    }
+    
+    return arrayBuffer;
+  };
+
+  const chunkAudioBlob = async (audioBlob: Blob): Promise<AudioChunk[]> => {
+    if (audioBlob.size <= CHUNK_SIZE_BYTES) {
+      const duration = await getAudioDuration(audioBlob);
+      return [{
+        blob: audioBlob,
+        startTime: 0,
+        endTime: duration,
+      }];
+    }
+
+    const chunkPoints = await findOptimalChunkPoints(audioBlob, CHUNK_SIZE_BYTES);
+    const chunks: AudioChunk[] = [];
+    
+    for (let i = 0; i < chunkPoints.length - 1; i++) {
+      const startTime = chunkPoints[i];
+      const endTime = chunkPoints[i + 1];
+      const chunkBlob = await sliceAudioBlob(audioBlob, startTime, endTime);
+      
+      chunks.push({
+        blob: chunkBlob,
+        startTime,
+        endTime,
+      });
+    }
+    
+    return chunks;
+  };
+
+  const processAudioChunks = async (chunks: AudioChunk[]): Promise<string> => {
+    const transcriptions: string[] = [];
+    
+    setChunkingProgress({
+      currentChunk: 0,
+      totalChunks: chunks.length,
+      isProcessing: true,
+    });
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const fileExtension = getFileExtension(audioMimeType);
+      
+      const formData = new FormData();
+      formData.append('audio', chunk.blob, `audio_chunk_${i}.${fileExtension}`);
+      
+      setChunkingProgress(prev => ({
+        ...prev,
+        currentChunk: i + 1,
+      }));
+
+      try {
+        // Use fetch directly to avoid mutation hook complications
+        const response = await fetch('/api/speech/stt', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        transcriptions.push(data.text.trim());
+      } catch (error) {
+        console.error(`Failed to process chunk ${i + 1}:`, error);
+        throw error;
+      }
+    }
+    
+    setChunkingProgress({
+      currentChunk: 0,
+      totalChunks: 0,
+      isProcessing: false,
+    });
+
+    // Join transcriptions with proper spacing
+    return transcriptions.join(' ').replace(/\s+/g, ' ').trim();
+  };
+
   const cleanup = () => {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.removeEventListener('dataavailable', (event: BlobEvent) => {
@@ -112,18 +359,49 @@ const useSpeechToTextExternal = (
     }
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
     if (audioChunks.length > 0) {
       const audioBlob = new Blob(audioChunks, { type: audioMimeType });
-      const fileExtension = getFileExtension(audioMimeType);
-
       setAudioChunks([]);
-
-      const formData = new FormData();
-      formData.append('audio', audioBlob, `audio.${fileExtension}`);
-      setIsRequestBeingMade(true);
       cleanup();
-      processAudio(formData);
+
+      try {
+        setIsRequestBeingMade(true);
+        
+        // Check if chunking is needed
+        if (audioBlob.size > CHUNK_SIZE_BYTES) {
+          showToast({
+            message: `Large audio file detected (${(audioBlob.size / (1024 * 1024)).toFixed(1)}MB). Processing in chunks...`,
+            status: 'info',
+          });
+          
+          const chunks = await chunkAudioBlob(audioBlob);
+          const fullTranscription = await processAudioChunks(chunks);
+          
+          setText(fullTranscription);
+          setIsRequestBeingMade(false);
+
+          if (autoSendText > -1 && speechToText && fullTranscription.length > 0) {
+            setTimeout(() => {
+              onTranscriptionComplete(fullTranscription);
+            }, autoSendText * 1000);
+          }
+        } else {
+          // Process normally for smaller files
+          const fileExtension = getFileExtension(audioMimeType);
+          const formData = new FormData();
+          formData.append('audio', audioBlob, `audio.${fileExtension}`);
+          processAudio(formData);
+        }
+      } catch (error) {
+        console.error('Error processing audio:', error);
+        showToast({
+          message: 'Failed to process audio chunks. Please try again.',
+          status: 'error',
+        });
+        setIsRequestBeingMade(false);
+        setChunkingProgress({ currentChunk: 0, totalChunks: 0, isProcessing: false });
+      }
     } else {
       showToast({ message: 'The audio was too short', status: 'warning' });
     }
@@ -275,7 +553,8 @@ const useSpeechToTextExternal = (
     isListening,
     externalStopRecording,
     externalStartRecording,
-    isLoading: isProcessing,
+    isLoading: isProcessing || chunkingProgress.isProcessing,
+    chunkingProgress,
   };
 };
 

@@ -55,7 +55,7 @@ export default function AudioRecorder({
     [setValue, methods],
   );
 
-  const { isListening, isLoading, startRecording, stopRecording } = useSpeechToText(
+  const { isListening, isLoading, startRecording, stopRecording, chunkingProgress } = useSpeechToText(
     setText,
     onTranscriptionComplete,
   );
@@ -78,25 +78,53 @@ export default function AudioRecorder({
     return <ListeningIcon className="stroke-gray-700 dark:stroke-gray-300" />;
   };
 
+  const getTooltipDescription = () => {
+    if (chunkingProgress?.isProcessing && chunkingProgress.totalChunks > 1) {
+      return `Processing chunk ${chunkingProgress.currentChunk} of ${chunkingProgress.totalChunks}`;
+    }
+    return localize('com_ui_use_micrphone');
+  };
+
   return (
-    <TooltipAnchor
-      description={localize('com_ui_use_micrphone')}
-      render={
-        <button
-          id="audio-recorder"
-          type="button"
-          aria-label={localize('com_ui_use_micrphone')}
-          onClick={isListening === true ? handleStopRecording : handleStartRecording}
-          disabled={disabled}
-          className={cn(
-            'flex size-9 items-center justify-center rounded-full p-1 transition-colors hover:bg-surface-hover',
-          )}
-          title={localize('com_ui_use_micrphone')}
-          aria-pressed={isListening}
-        >
-          {renderIcon()}
-        </button>
-      }
-    />
+    <div className="relative">
+      <TooltipAnchor
+        description={getTooltipDescription()}
+        render={
+          <button
+            id="audio-recorder"
+            type="button"
+            aria-label={localize('com_ui_use_micrphone')}
+            onClick={isListening === true ? handleStopRecording : handleStartRecording}
+            disabled={disabled}
+            className={cn(
+              'flex size-9 items-center justify-center rounded-full p-1 transition-colors hover:bg-surface-hover',
+            )}
+            title={getTooltipDescription()}
+            aria-pressed={isListening}
+          >
+            {renderIcon()}
+          </button>
+        }
+      />
+      {chunkingProgress?.isProcessing && chunkingProgress.totalChunks > 1 && (
+        <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+          <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-16 bg-gray-600 rounded-full h-1">
+                <div
+                  className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${(chunkingProgress.currentChunk / chunkingProgress.totalChunks) * 100}%`,
+                  }}
+                />
+              </div>
+              <span>
+                {chunkingProgress.currentChunk}/{chunkingProgress.totalChunks}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
