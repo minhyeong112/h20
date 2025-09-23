@@ -55,6 +55,8 @@ const useSpeechToTextExternal = (
   const { mutate: processAudio, isLoading: isProcessing } = useSpeechToTextMutation({
     onSuccess: (data) => {
       const extractedText = data.text;
+      // Clear the stored audio on successful transcription
+      setLastRecordedAudio(null);
       setText(extractedText);
       setIsRequestBeingMade(false);
 
@@ -64,13 +66,18 @@ const useSpeechToTextExternal = (
         }, autoSendText * 1000);
       }
     },
-    onError: () => {
-      showToast({
-        message: 'An error occurred while processing the audio, maybe the audio was too short',
-        status: 'error',
-      });
-      setIsRequestBeingMade(false);
-      setChunkingProgress({ currentChunk: 0, totalChunks: 0, isProcessing: false });
+    onError: (error) => {
+      // Only trigger fail-safe if we have a stored audio blob
+      if (lastRecordedAudio) {
+        handleTranscriptionFailure(lastRecordedAudio, error);
+      } else {
+        showToast({
+          message: 'An error occurred while processing the audio, maybe the audio was too short',
+          status: 'error',
+        });
+        setIsRequestBeingMade(false);
+        setChunkingProgress({ currentChunk: 0, totalChunks: 0, isProcessing: false });
+      }
     },
   });
 
@@ -424,38 +431,13 @@ const useSpeechToTextExternal = (
             }, autoSendText * 1000);
           }
         } else {
-          // Process normally for smaller files
+          // Process normally for smaller files using the original mutation
           const fileExtension = getFileExtension(audioMimeType);
           const formData = new FormData();
           formData.append('audio', audioBlob, `audio.${fileExtension}`);
           
-          // Override the mutation's onSuccess and onError for this specific call
-          try {
-            const response = await fetch('/api/speech/stt', {
-              method: 'POST',
-              body: formData,
-            });
-
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            const extractedText = data.text.trim();
-            
-            // Clear the stored audio on successful transcription
-            setLastRecordedAudio(null);
-            setText(extractedText);
-            setIsRequestBeingMade(false);
-
-            if (autoSendText > -1 && speechToText && extractedText.length > 0) {
-              setTimeout(() => {
-                onTranscriptionComplete(extractedText);
-              }, autoSendText * 1000);
-            }
-          } catch (fetchError) {
-            handleTranscriptionFailure(audioBlob, fetchError);
-          }
+          // Use the original processAudio mutation - callbacks are handled by the hook
+          processAudio(formData);
         }
       } catch (error) {
         handleTranscriptionFailure(audioBlob, error);
