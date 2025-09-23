@@ -46,6 +46,9 @@ const useSpeechToTextExternal = (
     isProcessing: false,
   });
   const [lastRecordedAudio, setLastRecordedAudio] = useState<Blob | null>(null);
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState<number>(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [minDecibels] = useRecoilState(store.decibelValue);
   const [autoSendText] = useRecoilState(store.autoSendText);
@@ -496,6 +499,15 @@ const useSpeechToTextExternal = (
         const bestMimeType = getBestSupportedMimeType();
         setAudioMimeType(bestMimeType);
 
+        // Start the recording timer
+        const startTime = Date.now();
+        setRecordingStartTime(startTime);
+        setRecordingDuration(0);
+        
+        recordingTimerRef.current = setInterval(() => {
+          setRecordingDuration(Math.floor((Date.now() - startTime) / 1000));
+        }, 1000);
+
         mediaRecorderRef.current = new MediaRecorder(audioStream.current, {
           mimeType: audioMimeType,
         });
@@ -531,6 +543,13 @@ const useSpeechToTextExternal = (
         window.cancelAnimationFrame(animationFrameIdRef.current);
         animationFrameIdRef.current = null;
       }
+
+      // Stop the recording timer
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      setRecordingStartTime(null);
 
       setIsListening(false);
     } else {
@@ -589,6 +608,15 @@ const useSpeechToTextExternal = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isListening]);
 
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+    };
+  }, []);
+
   const downloadLastRecording = () => {
     if (lastRecordedAudio) {
       downloadAudioFile(lastRecordedAudio);
@@ -612,6 +640,8 @@ const useSpeechToTextExternal = (
     chunkingProgress,
     downloadLastRecording,
     hasLastRecording: !!lastRecordedAudio,
+    recordingDuration,
+    isRecording: isListening,
   };
 };
 

@@ -55,7 +55,15 @@ export default function AudioRecorder({
     [setValue, methods],
   );
 
-  const { isListening, isLoading, startRecording, stopRecording, chunkingProgress } = useSpeechToText(
+  const { 
+    isListening, 
+    isLoading, 
+    startRecording, 
+    stopRecording, 
+    chunkingProgress,
+    recordingDuration,
+    isRecording 
+  } = useSpeechToText(
     setText,
     onTranscriptionComplete,
   );
@@ -78,9 +86,18 @@ export default function AudioRecorder({
     return <ListeningIcon className="stroke-gray-700 dark:stroke-gray-300" />;
   };
 
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const getTooltipDescription = () => {
     if (chunkingProgress?.isProcessing && chunkingProgress.totalChunks > 1) {
       return `Processing chunk ${chunkingProgress.currentChunk} of ${chunkingProgress.totalChunks}`;
+    }
+    if (isRecording && recordingDuration !== undefined) {
+      return `Recording: ${formatDuration(recordingDuration)}`;
     }
     return localize('com_ui_use_micrphone');
   };
@@ -106,6 +123,18 @@ export default function AudioRecorder({
           </button>
         }
       />
+      
+      {/* Recording Timer */}
+      {isRecording && recordingDuration !== undefined && (
+        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+          <div className="bg-red-600 text-white text-xs px-2 py-1 rounded shadow-lg flex items-center space-x-1">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            <span>{formatDuration(recordingDuration)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Chunking Progress */}
       {chunkingProgress?.isProcessing && chunkingProgress.totalChunks > 1 && (
         <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
           <div className="bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg">
