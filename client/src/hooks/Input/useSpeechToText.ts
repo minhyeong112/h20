@@ -15,6 +15,8 @@ const useSpeechToText = (
     totalChunks: number;
     isProcessing: boolean;
   };
+  downloadLastRecording?: () => void;
+  hasLastRecording?: boolean;
 } => {
   const { speechToTextEndpoint } = useGetAudioSettings();
   const externalSpeechToText = speechToTextEndpoint === 'external';
@@ -32,6 +34,8 @@ const useSpeechToText = (
     externalStartRecording: startSpeechRecordingExternal,
     externalStopRecording: stopSpeechRecordingExternal,
     chunkingProgress,
+    downloadLastRecording,
+    hasLastRecording,
   } = useSpeechToTextExternal(setText, onTranscriptionComplete);
 
   const isListening = externalSpeechToText ? speechIsListeningExternal : speechIsListeningBrowser;
@@ -50,6 +54,8 @@ const useSpeechToText = (
     stopRecording,
     startRecording,
     chunkingProgress: externalSpeechToText ? chunkingProgress : undefined,
+    downloadLastRecording: externalSpeechToText ? downloadLastRecording : undefined,
+    hasLastRecording: externalSpeechToText ? hasLastRecording : undefined,
   };
 };
 

@@ -45,6 +45,7 @@ const useSpeechToTextExternal = (
     totalChunks: 0,
     isProcessing: false,
   });
+  const [lastRecordedAudio, setLastRecordedAudio] = useState<Blob | null>(null);
 
   const [minDecibels] = useRecoilState(store.decibelValue);
   const [autoSendText] = useRecoilState(store.autoSendText);
@@ -359,11 +360,45 @@ const useSpeechToTextExternal = (
     }
   };
 
+  const downloadAudioFile = (audioBlob: Blob, filename?: string) => {
+    const fileExtension = getFileExtension(audioMimeType);
+    const defaultFilename = filename || `recording_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.${fileExtension}`;
+    
+    const url = URL.createObjectURL(audioBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = defaultFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleTranscriptionFailure = (audioBlob: Blob, error: any) => {
+    console.error('Transcription failed:', error);
+    setLastRecordedAudio(audioBlob);
+    
+    // Automatically download the audio file as a fail-safe
+    downloadAudioFile(audioBlob);
+    
+    showToast({
+      message: 'Transcription failed! Your audio recording has been automatically downloaded to preserve your work.',
+      status: 'error',
+      duration: 8000, // Show for 8 seconds
+    });
+    
+    setIsRequestBeingMade(false);
+    setChunkingProgress({ currentChunk: 0, totalChunks: 0, isProcessing: false });
+  };
+
   const handleStop = async () => {
     if (audioChunks.length > 0) {
       const audioBlob = new Blob(audioChunks, { type: audioMimeType });
       setAudioChunks([]);
       cleanup();
+
+      // Store the audio as a fail-safe
+      setLastRecordedAudio(audioBlob);
 
       try {
         setIsRequestBeingMade(true);
@@ -378,6 +413,8 @@ const useSpeechToTextExternal = (
           const chunks = await chunkAudioBlob(audioBlob);
           const fullTranscription = await processAudioChunks(chunks);
           
+          // Clear the stored audio on successful transcription
+          setLastRecordedAudio(null);
           setText(fullTranscription);
           setIsRequestBeingMade(false);
 
@@ -391,16 +428,37 @@ const useSpeechToTextExternal = (
           const fileExtension = getFileExtension(audioMimeType);
           const formData = new FormData();
           formData.append('audio', audioBlob, `audio.${fileExtension}`);
-          processAudio(formData);
+          
+          // Override the mutation's onSuccess and onError for this specific call
+          try {
+            const response = await fetch('/api/speech/stt', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const extractedText = data.text.trim();
+            
+            // Clear the stored audio on successful transcription
+            setLastRecordedAudio(null);
+            setText(extractedText);
+            setIsRequestBeingMade(false);
+
+            if (autoSendText > -1 && speechToText && extractedText.length > 0) {
+              setTimeout(() => {
+                onTranscriptionComplete(extractedText);
+              }, autoSendText * 1000);
+            }
+          } catch (fetchError) {
+            handleTranscriptionFailure(audioBlob, fetchError);
+          }
         }
       } catch (error) {
-        console.error('Error processing audio:', error);
-        showToast({
-          message: 'Failed to process audio chunks. Please try again.',
-          status: 'error',
-        });
-        setIsRequestBeingMade(false);
-        setChunkingProgress({ currentChunk: 0, totalChunks: 0, isProcessing: false });
+        handleTranscriptionFailure(audioBlob, error);
       }
     } else {
       showToast({ message: 'The audio was too short', status: 'warning' });
@@ -549,12 +607,29 @@ const useSpeechToTextExternal = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isListening]);
 
+  const downloadLastRecording = () => {
+    if (lastRecordedAudio) {
+      downloadAudioFile(lastRecordedAudio);
+      showToast({
+        message: 'Audio recording downloaded successfully.',
+        status: 'success',
+      });
+    } else {
+      showToast({
+        message: 'No recent recording available to download.',
+        status: 'warning',
+      });
+    }
+  };
+
   return {
     isListening,
     externalStopRecording,
     externalStartRecording,
     isLoading: isProcessing || chunkingProgress.isProcessing,
     chunkingProgress,
+    downloadLastRecording,
+    hasLastRecording: !!lastRecordedAudio,
   };
 };
 
