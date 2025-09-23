@@ -65,6 +65,32 @@ export default function useSideNavLinks({
 
   const Links = useMemo(() => {
     const links: NavLink[] = [];
+    
+    if (hasAccessToPrompts) {
+      links.push({
+        title: 'com_ui_prompts',
+        label: '',
+        icon: MessageSquareQuote,
+        id: 'prompts',
+        Component: PromptsAccordion,
+      });
+    }
+
+    if (
+      endpointsConfig?.[EModelEndpoint.agents] &&
+      hasAccessToAgents &&
+      hasAccessToCreateAgents &&
+      endpointsConfig[EModelEndpoint.agents].disableBuilder !== true
+    ) {
+      links.push({
+        title: 'com_sidepanel_agents',
+        label: '',
+        icon: Blocks,
+        id: EModelEndpoint.agents,
+        Component: AgentPanelSwitch,
+      });
+    }
+
     if (
       isAssistantsEndpoint(endpoint) &&
       ((endpoint === EModelEndpoint.assistants &&
@@ -81,31 +107,6 @@ export default function useSideNavLinks({
         icon: Blocks,
         id: EModelEndpoint.assistants,
         Component: PanelSwitch,
-      });
-    }
-
-    if (
-      endpointsConfig?.[EModelEndpoint.agents] &&
-      hasAccessToAgents &&
-      hasAccessToCreateAgents &&
-      endpointsConfig[EModelEndpoint.agents].disableBuilder !== true
-    ) {
-      links.push({
-        title: 'com_sidepanel_agent_builder',
-        label: '',
-        icon: Blocks,
-        id: EModelEndpoint.agents,
-        Component: AgentPanelSwitch,
-      });
-    }
-
-    if (hasAccessToPrompts) {
-      links.push({
-        title: 'com_ui_prompts',
-        label: '',
-        icon: MessageSquareQuote,
-        id: 'prompts',
-        Component: PromptsAccordion,
       });
     }
 
@@ -135,7 +136,7 @@ export default function useSideNavLinks({
     }
 
     links.push({
-      title: 'com_sidepanel_attach_files',
+      title: 'com_sidepanel_files',
       label: '',
       icon: AttachmentIcon,
       id: 'files',
