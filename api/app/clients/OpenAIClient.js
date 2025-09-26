@@ -336,6 +336,58 @@ class OpenAIClient extends BaseClient {
     return chunk;
   }
 
+  collectReasoningFromMessage(message, reasoningKey) {
+    if (!message) {
+      return '';
+    }
+
+    let aggregated = '';
+
+    const directReasoning =
+      message[reasoningKey] ?? message.reasoning ?? message.reasoning_content;
+    aggregated += this.normalizeReasoningValue(directReasoning);
+
+    if (Array.isArray(message.content)) {
+      for (const part of message.content) {
+        if (part == null) {
+          continue;
+        }
+
+        if (typeof part === 'string') {
+          continue;
+        }
+
+        const partType = typeof part.type === 'string' ? part.type.toLowerCase() : '';
+        if (
+          partType.includes('think') ||
+          partType.includes('reason') ||
+          partType.includes('analysis')
+        ) {
+          aggregated += this.normalizeReasoningValue(part);
+        }
+
+        if (Array.isArray(part.content)) {
+          for (const nested of part.content) {
+            if (nested == null) {
+              continue;
+            }
+            const nestedType =
+              typeof nested.type === 'string' ? nested.type.toLowerCase() : '';
+            if (
+              nestedType.includes('think') ||
+              nestedType.includes('reason') ||
+              nestedType.includes('analysis')
+            ) {
+              aggregated += this.normalizeReasoningValue(nested);
+            }
+          }
+        }
+      }
+    }
+
+    return aggregated;
+  }
+
   /**
    *
    * Checks if the model is a vision model based on request attachments and sets the appropriate options:
@@ -1247,6 +1299,10 @@ ${convo}
         delete modelOptions.useResponsesApi;
       }
 
+      if (usingResponsesApi) {
+        this.options.useResponsesApi = true;
+      }
+
       if (typeof onProgress === 'function') {
         modelOptions.stream = true;
       }
@@ -1392,7 +1448,15 @@ ${convo}
           this.options.endpoint === EModelEndpoint.azureOpenAI) &&
         modelOptions.stream === true
       ) {
-        modelOptions.stream_options = { include_usage: true };
+        const existingStreamOptions =
+          typeof modelOptions.stream_options === 'object' && modelOptions.stream_options
+            ? { ...modelOptions.stream_options }
+            : {};
+        existingStreamOptions.include_usage = true;
+        if (usingResponsesApi) {
+          existingStreamOptions.include_reasoning = true;
+        }
+        modelOptions.stream_options = existingStreamOptions;
       }
 
       if (this.options.addParams && typeof this.options.addParams === 'object') {
@@ -1511,6 +1575,18 @@ ${convo}
             const finalMessage = finalChatCompletion?.choices?.[0]?.message;
             if (!finalMessage) {
               return;
+            }
+            const finalReasoning = this.collectReasoningFromMessage(finalMessage, reasoningKey);
+            if (finalReasoning && this.streamHandler) {
+              this.streamHandler.handle({
+                choices: [
+                  {
+                    delta: {
+                      [reasoningKey]: finalReasoning,
+                    },
+                  },
+                ],
+              });
             }
             await streamPromise;
             if (finalMessage?.role !== 'assistant') {
