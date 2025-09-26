@@ -223,6 +223,119 @@ class OpenAIClient extends BaseClient {
     return this;
   }
 
+  normalizeReasoningValue(value, seen = new Set()) {
+    if (value == null) {
+      return '';
+    }
+
+    const valueType = typeof value;
+    if (valueType === 'string') {
+      return value;
+    }
+
+    if (valueType === 'number' || valueType === 'boolean') {
+      return String(value);
+    }
+
+    if (Array.isArray(value)) {
+      let result = '';
+      for (const item of value) {
+        result += this.normalizeReasoningValue(item, seen);
+      }
+      return result;
+    }
+
+    if (valueType !== 'object') {
+      return '';
+    }
+
+    if (seen.has(value)) {
+      return '';
+    }
+
+    seen.add(value);
+
+    if (typeof value.text === 'string') {
+      return value.text;
+    }
+
+    const priorityKeys = [
+      'text',
+      'think',
+      'thought',
+      'thoughts',
+      'output_text',
+      'reasoning',
+      'reasoning_content',
+      'content',
+      'parts',
+      'messages',
+      'steps',
+      'summary',
+      'details',
+      'arguments',
+    ];
+
+    let aggregated = '';
+
+    for (const key of priorityKeys) {
+      if (key in value) {
+        aggregated += this.normalizeReasoningValue(value[key], seen);
+      }
+    }
+
+    if (aggregated.length > 0) {
+      return aggregated;
+    }
+
+    for (const entry of Object.values(value)) {
+      aggregated += this.normalizeReasoningValue(entry, seen);
+    }
+
+    return aggregated;
+  }
+
+  normalizeReasoningChunk(chunk, reasoningKey) {
+    if (!chunk || !Array.isArray(chunk.choices)) {
+      return chunk;
+    }
+
+    const fallbackKey = reasoningKey === 'reasoning' ? 'reasoning_content' : 'reasoning';
+
+    chunk.choices = chunk.choices.map((choice) => {
+      if (!choice || !choice.delta) {
+        return choice;
+      }
+
+      const delta = choice.delta;
+      const primaryValue =
+        Object.prototype.hasOwnProperty.call(delta, reasoningKey) && delta[reasoningKey] != null
+          ? delta[reasoningKey]
+          : undefined;
+      const fallbackValue =
+        primaryValue == null && fallbackKey && delta[fallbackKey] != null
+          ? delta[fallbackKey]
+          : undefined;
+
+      const rawReasoning = primaryValue ?? fallbackValue;
+
+      if (rawReasoning == null) {
+        return choice;
+      }
+
+      const normalized = this.normalizeReasoningValue(rawReasoning);
+      delta[reasoningKey] = normalized;
+
+      if (fallbackKey && fallbackKey !== reasoningKey) {
+        delta[fallbackKey] = normalized;
+      }
+
+      return choice;
+    });
+
+    return chunk;
+  }
+
   /**
    *
    * Checks if the model is a vision model based on request attachments and sets the appropriate options:
@@ -1127,6 +1240,12 @@ ${convo}
       }
 
       let modelOptions = { ...this.modelOptions };
+      const usingResponsesApi =
+        modelOptions.useResponsesApi === true || this.options.useResponsesApi === true;
+
+      if (Object.prototype.hasOwnProperty.call(modelOptions, 'useResponsesApi')) {
+        delete modelOptions.useResponsesApi;
+      }
 
       if (typeof onProgress === 'function') {
         modelOptions.stream = true;
@@ -1351,6 +1470,8 @@ ${convo}
       if (this.useOpenRouter) {
         modelOptions.include_reasoning = true;
         reasoningKey = 'reasoning';
+      } else if (usingResponsesApi) {
+        reasoningKey = 'reasoning';
       }
       if (this.useOpenRouter && modelOptions.reasoning_effort != null) {
         modelOptions.reasoning = {
@@ -1434,7 +1555,8 @@ ${convo}
               }
             });
           }
-          this.streamHandler.handle(chunk);
+          const normalizedChunk = this.normalizeReasoningChunk(chunk, reasoningKey);
+          this.streamHandler.handle(normalizedChunk);
           if (abortController.signal.aborted) {
             stream.controller.abort();
             break;
