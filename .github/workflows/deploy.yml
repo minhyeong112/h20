@@ -71,7 +71,7 @@ jobs:
           ENDPOINTS=openAI,anthropic,google,custom,agents
           PROXY=
           OPENAI_MODELS=gpt-5,gpt-5-chat-latest,gpt-4.1-2025-04-14,o3-deep-research-2025-06-26,o4-mini-deep-research-2025-06-26,gpt-4o-realtime-preview-2025-06-03
-          ANTHROPIC_MODELS=claude-sonnet-4-5-20250929,claude-3-5-sonnet-20241022,claude-3-5-haiku-20241022,claude-opus-4-1-20250805,claude-3-opus-20240229
+          ANTHROPIC_MODELS=claude-sonnet-4-5-20250929,claude-opus-4-1-20250805
           GOOGLE_MODELS=gemini-2.5-pro,gemini-2.5-flash-lite
           ALLOW_EMAIL_LOGIN=true
           ALLOW_REGISTRATION=true
